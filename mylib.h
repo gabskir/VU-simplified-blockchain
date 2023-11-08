@@ -22,8 +22,10 @@
 #include <unordered_set>
 #include <cstring>
 #include <algorithm>
-#include <tuple>
-
+#include <thread>
+#include <stdexcept>
+#include <unordered_map>
+#include <stack>
 
 using std::cin;
 using std::cout;
@@ -34,5 +36,6 @@ using std::cerr;
 using std::move;
 using std::to_string;
 using std::stringstream;
+
 
 #endif

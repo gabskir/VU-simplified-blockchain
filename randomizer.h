@@ -3,11 +3,14 @@
 
 #include "mylib.h"
 
+// Class Random contains static methods for generating random values of various types.
+
 class Random {
     private:
         static thread_local std::mt19937 generator;
 
     public:
+        // Initialize the random number generator with a random seed based on std::random_device.
 
         static void init() {
             std::random_device rd;
@@ -41,6 +44,8 @@ class Random {
             return dist(generator);
         }
 };
+
+// Initialize the static thread-local generator with a non-deterministic seed.
 
 thread_local std::mt19937 Random::generator(std::random_device{}());
 
