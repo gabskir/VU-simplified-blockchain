@@ -45,6 +45,110 @@ It's an educational resource meant to demonstrate the basic concepts of blockcha
 - Proof-of-work mining simulation
 - Blockchain integrity checks
 - Balance management for simulated users
+  
+### Usage
+---
+To run the simulation, download all .cpp and .h files, compile the project using a C++ compiler and execute the resulting binary. Example
+
+```
+g++ -c main.cpp hashing.cpp 
+g++ main.o hashing.o -o hashing
+./hashing
+
+```
+
+## Changes in V0.3
+
+### Project Structure:
+---
+The project consists of several components, each handling a different aspect of the blockchain:
+
+- `mylib.h`: Common includes and utility functions required across the project.
+- `merkleTree.h`: Implements a Merkle tree that provides a secure and efficient structure for summarizing all the transactions in a block.
+- `functions.h`: Additional utility functions that may be used for hashing and other operations.
+- `hashing.cpp`: Contains the implementation of the hashing function used for creating transaction IDs and block hashes.
+- `randomizer.h`: Defines the DataGenerator class for generating random values, used to simulate users and transactions in a blockchain system.
+- `block.h`: Describes the Block class, a key element in blockchain, encapsulating transactions, hashing, and mining functionalities.
+- `user.h`: Introduces the User class and UTXO structure for representing blockchain participants and their transaction outputs.
+- `transactions.h`: Contains the Transaction class, detailing the structure and information of transactions in the blockchain.
+- `main.cpp`: Serves as the primary driver of the blockchain simulation, handling user and transaction generation, block mining, and providing an interactive interface for searching and displaying blockchain data.
+
+### Main Simulation Process
+---
+
+The `main.cpp` file orchestrates the core activities of the blockchain simulation, executing these critical phases:
+
+1. **Initialization of Users**:
+Generates about 1000 users through DataGenerator, each with a unique public key and an initial set of UTXOs (Unspent Transaction Outputs), representing their digital wallet balance.
+
+2. **Transaction Memory Pool Creation**:
+Constructs a memory pool of transactions using DataGenerator, simulating around 10,000 transactions that are yet to be processed or included in any block.
+
+3. **Blockchain Foundation Setup**:
+Begins with the creation of an initial 'genesis' block, establishing the start of the blockchain. This block is set with a basic difficulty target for mining.
+
+4. **Blockchain Data Structure Initialization**:
+Prepares a blockchain data structure, represented as a vector of blocks, and inserts the genesis block as the first element.
+
+5. **Mining Process Initiation**:
+Sets up a mining environment using ***OpenMP*** to parallelize the mining process, simulating multiple miners working concurrently.
+
+6. **Block Mining and Blockchain Expansion**:
+Enters a continuous loop, operational as long as there are unprocessed transactions in the memory pool.<br>
+***Within the loop***:
+- Selects a batch of pending transactions (up to 100) to create a new block.
+- Initiates the mining process for this block, employing parallel computation to find a valid hash that meets the difficulty criteria.
+- Upon successful mining, verifies transactions, updates balances, and appends the newly mined block to the blockchain.
+- If mining is unsuccessful, the process repeats with the next set of transactions.
+  
+7. **Simulation Conclusion:**
+Concludes once all transactions are processed or when the transaction pool is empty.
+Displays the final count of blocks in the blockchain and any relevant statistics or insights derived from the mining process.
+
+Throughout the simulation, the program provides real-time feedback and outputs, such as the validation status of transactions and the addition of new blocks, offering a detailed and interactive glimpse into the mechanics of blockchain technology.
+
+### UTXO implementatio:
+---
+- **UTXO Structure**: Defined within user.h, a UTXO is a structure that contains the amount of currency and an identifier (utxoID), which is a unique hash generated based on the owner's details and the amount.
+- **UTXO Association with Users**: Each user, represented by the User class, has a list (vector) of UTXOs. This list represents the user's available balance, where each UTXO is a discrete unit of currency that the user can spend.
+- **Transaction Processing**:
+When a transaction occurs, the program selects appropriate UTXOs from the sender's account equal to or exceeding the transaction amount.
+The chosen UTXOs are then marked as spent and removed from the sender's list. If the total UTXO value exceeds the transaction amount, a new UTXO is created representing the ***change*** and is added back to the sender's UTXO list.
+- **New UTXO Creation for Recipients**: Upon successful transaction validation, a new UTXO is created corresponding to the transaction amount and is added to the receiver's UTXO list, increasing their balance.
+- **Balance Calculation**: A user's total balance is dynamically calculated as the sum of all their unspent UTXOs. This calculation happens whenever there's a need to display the user's balance or during transaction validation.
+
+#### Example
+---
+
+From this image we can see that ***user0*** was sent 50728.46 coins. The color green shows user's UTXOs that have not been spent and stayed in the wallet and color yellow - received UTXOs. <br>
+
+---
+![received_utxo](https://github.com/gabskir/VU-simplified-blockchain/blob/main/Sent%20UTXO.png?raw=true).
+
+---
+
+Sender - ***user2***. The color green shows user's UTXOs that have not been spent and stayed in the wallet, red - spent UTXOs, yellow - received UTXOs, purple - change that was sent back to the sender. <br>
+
+---
+![removed_utxo](https://github.com/gabskir/VU-simplified-blockchain/blob/main/UTXO%20removal,%20change%20calculation.png?raw=true).
+
+---
+
+From these examples we can see the main logic of UTXO implementation. <br>
+- The amount user2 wanted to send was 50728.46.
+- The closest value UTXO was **UTXO 6e16018ede286ab649406ed3200a63f3cb991afab7f66fa8f69dc28ee0e7ac9a - 48919.95**, but because it was less than the amoun user wanted to send, other UTXO was added: **UTXO     f99b811f257b0d0e812935c5c3bea9dc4306402ac5948df83674d89b5738daf3 - 69115.25**.
+- So user2 sent two UTXOs with the value equal to 118035.2. User0 got the amount sender wanted to send, and the remaining amount - change - was sent back to the user:
+```
+change = 118035.2 - 50728.46
+change = 67306.74
+
+```
+As we can see from the image new UTXO that has the value of change was created and added to sender's wallet:
+```
+04823753fe9effd1a21a3eb3386e93d81f015fb5c2983c0b61013644f82f7102 - 67306.74
+```
+
+## V0.2.
 
 ### Project Structure:
 ---
@@ -107,16 +211,6 @@ The simulation provides visibility into the mining process, showing real-time ou
 ##### Block creation output 
    ![block_Info](https://github.com/gabskir/VU-simplified-blockchain/blob/main/block_Information.png?raw=true) <br>
 
-### Usage
----
-To run the simulation, download all .cpp and .h files, compile the project using a C++ compiler and execute the resulting binary. Example
-
-```
-g++ -c main.cpp hashing.cpp 
-g++ main.o hashing.o -o hashing
-./hashing
-
-```
 
 
 
