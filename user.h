@@ -4,81 +4,67 @@
 #include "mylib.h"
 #include "randomizer.h"
 
-//class to represent an user (with a name, public key and balance)
+struct UTXO {
+    double amount;
+    string utxoID;
+    string owner;
+
+    UTXO() {}
+    UTXO(double amount, string owner) 
+        : amount(amount),owner(owner) {
+            utxoID = getHashString(owner + to_string(amount));
+        }
+};
+
 class User {
     private:
         string Name;
         string Public_key;
-        long double Balance;
+        vector <UTXO> utxos;
 
     public:
-        User () = default;
-        User(const string& name, const string& publicKey, long double balance)
-            : Name(name), Public_key(publicKey), Balance(balance) {}
+        User () {};
+        User(const string& name, const string& publicKey) 
+            : Name(name), Public_key(publicKey) {}
 
-        void UpdateBalance(long double amount) {
-            Balance += amount;
+        string GetName() const { return Name; }
+        string GetpKey() const { return Public_key; }
+        const vector<UTXO>& GetUtxos() const { return utxos; }
+
+        void setName(const string& name) { Name = name; }
+        void setpKey(const string& publicKey) { Public_key = publicKey; }
+        
+        double GetBalance() const {
+            double balance = 0.0;
+            for (const auto& utxo : utxos) {
+                balance += utxo.amount;
+            }
+            return balance;
         }
-        // Copy constructor
-        User(const User& other) = default;
 
-        // Move constructor
-        User(User&& other) noexcept = default;
-
-        // Copy assignment operator
-        User& operator=(const User& other) = default;
-
-        // Move assignment operator
-        User& operator=(User&& other) noexcept = default;
-
-        // Getters
-        long double GetBalance() const { return Balance; }
-        const string& GetpKey() const { return Public_key; }
-};       
-
-//class to manage the users, create them and update their balance
-class UserManager {
-private:
-    vector <User> users;
-
-    User createUser() {
-        string name = Random::randomString(10);
-        string publicKey = Random::randomString(50);
-        double balance = Random::randomDouble(100, 1000000);
-        return User(name, publicKey, balance);
-    }
-
-
-public:
-    // Constructor that creates a specified number of users
-    UserManager(int numberOfUsers) {
-        users.reserve(numberOfUsers);
-        for (int i = 0; i < numberOfUsers; i++) {
-            users.push_back(createUser());
+        void addUTXO(const UTXO& utxo) {
+            utxos.push_back(utxo);
         }
-    }
 
-    // Updates the balance of a user identified by their public key.
-
-    void updateBalance(const string& publicKey, long double amount) {
-        for (auto& user : users) {
-            if (user.GetpKey() == publicKey) {
-                user.UpdateBalance(amount);
-                return;
+        void removeUTXO(const string& utxoID) {
+            auto it = std::find_if(utxos.begin(), utxos.end(), [&utxoID](const UTXO& u) {
+                return u.utxoID == utxoID;
+            });
+            if (it != utxos.end()) {
+                utxos.erase(it);
             }
         }
-    }
 
-    const vector<User>& getUsers() const { return users; }
-
-    // Finds a user by their public key and returns a pointer to the user object.
-    const User* findUser(const string& publicKey) const {
-        for (const auto& user : users) {
-            if (user.GetpKey() == publicKey) {
-                return &user;
+        void print() const {
+            cout << "Name: " << Name << endl;
+            cout << "Public key: " << Public_key << endl;
+            cout << fixed << setprecision(2);
+            cout << "Balance: " << GetBalance() << endl;
+            cout << "UTXOs: " << endl;
+            for (const auto& utxo : utxos) {
+                cout << "    " << utxo.utxoID << " - " << setprecision(2) << utxo.amount << endl;
             }
         }
-        return nullptr;
-    }
 };
+
 #endif

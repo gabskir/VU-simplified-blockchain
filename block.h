@@ -6,106 +6,88 @@
 #include "transactions.h"
 
 #define BLOCK_VERSION 1
+const int NUM_THREADS = 4;
+bool blockMinedGlobal = false;
 
 
 class Block {
     private:
-    unsigned int version;
-    string previousHash;
-    string merkleRoot;
-    unsigned long long int timestamp;
-    unsigned int difficultyTarget;
-    unsigned int nonce;
-    vector<Transaction> transactions;
+        string hash;
+        string previousHash;
+        string timestamp;
+        unsigned int version;
+        string merkleRoot;
+        unsigned int difficultyTarget;
+        unsigned int nonce;
+        vector<Transaction> transactions;
 
+        bool Mined = false;
+        bool Valid = false;
 
     public:
-    Block(const std::string& prevHash, unsigned int diffTarget, const std::vector<Transaction>& trans)
-        : version(BLOCK_VERSION), previousHash(prevHash), difficultyTarget(diffTarget), transactions(trans), nonce(0) {
-        timestamp = static_cast<unsigned long long int>(std::time(nullptr));
-        
-        MerkleTree merkleTree(transactions); // Initialize the Merkle tree with transactions
-        merkleRoot = merkleTree.createMerkleRoot(); // Create the Merkle root
-        nonce = Random::randomUnsignedInt(0, UINT_MAX);
-        std::ofstream outFile("blocks_info.txt", std::ios::app);
-        if (outFile) {
-            outFile << toString() << endl; 
-            outFile.close(); 
-        } else {
-            std::cerr << "Unable to open file for writing block information." << std::endl;
+        Block() {};
+        Block(const string& prevHash, unsigned int difficultyTarget, const vector<Transaction>& txs)
+            : previousHash(prevHash), difficultyTarget(difficultyTarget), transactions(txs), version(BLOCK_VERSION) {
+                timestamp = getCurrentTime();
+                merkleRoot = MerkleTree(transactions).createMerkleRoot();
+                hash = getHashString(getHashString(previousHash + merkleRoot + timestamp + to_string(difficultyTarget) + to_string(version)) + to_string(nonce));
+            }
+
+        void setValidBlock (bool valid) {
+            Valid = valid;
         }
-    }
 
-    // Getters
-    std::string getPreviousHash() const { return previousHash; }
-    string getHash() const { return getHashString(previousHash + merkleRoot + std::to_string(timestamp) + std::to_string(difficultyTarget) + std::to_string(nonce)); }
-    unsigned long long int getTimestamp() const { return timestamp; }
-    unsigned int getDifficultyTarget() const { return difficultyTarget; }
-    unsigned int getNonce() const { return nonce; }
-    const std::vector<Transaction>& getTransactions() const { return transactions; }
-    string getMerkleRoot() const { return merkleRoot; }
+        string getHash() const { return hash; }
+        string getPreviousHash() const { return previousHash; }
+        string getTimestamp() const { return timestamp; }
+        unsigned int getVersion() const { return version; }
+        string getMerkleRoot() const { return merkleRoot; }
+        unsigned int getDifficultyTarget() const { return difficultyTarget; }
+        unsigned int getNonce() const { return nonce; }
+        vector<Transaction>& getTransactions() { return transactions; }
+        const vector<Transaction>& getTransactions() const { return transactions; }
+        bool getMined() const { return Mined; }
 
-    unsigned int setNonce(unsigned int newNonce) { return nonce = newNonce; }
+        void Mine() {
+            int randomNonce = 0;
+            string guessHash = getHashString(getHashString(previousHash + merkleRoot + timestamp + to_string(difficultyTarget) + to_string(version)) + to_string(randomNonce));
 
-    // Method to check if the block's hash meets the difficulty requirements
-    bool meetRequirements() {
-        return getHash().substr(0, difficultyTarget) == string(difficultyTarget, '0');
-    }
-
-    string toString() const {
-        std::ostringstream ss;
-        ss << std::fixed << std::setprecision(2); 
-
-
-        //long double totalAmount = std::accumulate(transactions.begin(), transactions.end(), 0.0,
-                                                  //[](long double sum, const Transaction& tx) { return sum + tx.GetAmount(); });        
-
-        //long double averageTransaction = transactions.empty() ? 0.0 : totalAmount / transactions.size();
-
-        ss << "Block Information\n"
-           << "Version: " << version << "\n"
-           << "Previous Hash: " << previousHash << "\n"
-           << "Merkle Root: " << merkleRoot << "\n"
-           << "Timestamp: " << timestamp << "\n"
-           << "Difficulty Target: " << difficultyTarget << "\n"
-           << "Nonce: " << nonce << "\n"
-           << "Number of Transactions: " << transactions.size() << "\n";
-           //<< "A total of " << totalAmount << " coins were sent in the block\n"
-           //<< "The average transaction is " << averageTransaction << " coins .\n";
-        return ss.str();
-    }
-};
-
-// Mine class represents a miner that attempts to mine blocks
-class Mine {
-    private:
-    unsigned int id;
-    unsigned int blocksMined;
-
-    public:
-    Mine(unsigned int id) : id(id), blocksMined(0) {}
-    // Method to mine a block with given parameters
-    Block mineBlock(string prevHash, unsigned int difficultyTarget, const vector<Transaction>& transactions, unsigned int attempts) {
-        Block block(prevHash, difficultyTarget, transactions);
-        cout << "Starting mining process for Block by Miner ID " << id << endl;
-
-        // Attempt to mine the block by trying different nonce values
-        for (unsigned int i = 0; i < attempts; i++) {
-            unsigned int nonce = Random::randomUnsignedInt(0, UINT_MAX);
-            block.setNonce(nonce);
-
-            if (block.meetRequirements()) {
-                cout << "Block " << id << " mined successfully with hash: " << block.getHash() << endl;
-                return block;
+            while (!Mined && !blockMinedGlobal) {
+                if (!hashMeetDifficultyTarget(guessHash)) {
+                    randomNonce += NUM_THREADS;
+                    guessHash = getHashString(getHashString(previousHash + merkleRoot + timestamp + to_string(difficultyTarget) + to_string(version)) + to_string(randomNonce));
+                } else {
+                    nonce = randomNonce;
+                    hash = guessHash;
+                    Mined = true;
+                    #pragma omp critical
+                    {
+                        blockMinedGlobal = true;
+                    }
+                }
             }
         }
 
-        throw std::runtime_error("Block " + std::to_string(id) + " failed to mine");
-    }
+        bool hashMeetDifficultyTarget(string guessHash) {
+            return guessHash.substr(0, difficultyTarget) == string(difficultyTarget, '0');
+        }
 
-    void incrementBlocksMined() { blocksMined++; }
-    unsigned int getBlocksMined() const { return blocksMined; }
-    unsigned int getID() const { return id; }
+        void print(std::ostream& os) const {
+            os << "Hash: " << hash << endl;
+            os << "Previous Hash: " << previousHash << endl;
+            os << "Timestamp: " << timestamp << endl;
+            os << "Version: " << version << endl;
+            os << "Merkle Root: " << merkleRoot << endl;
+            os << "Difficulty Target: " << difficultyTarget << endl;
+            os << "Nonce: " << nonce << endl;
+            os << "Number of Transactions: " << transactions.size() << endl;
+            os << "Transactions: " << endl;
+            for (const Transaction& tx : transactions) {
+                os << tx.GetID() << endl;
+            }
+        }
+
 };
+
 
 #endif

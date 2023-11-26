@@ -59,3 +59,11 @@ string getHashString(const string& input) {
 
     return ss.str();
 }
+
+string getCurrentTime() {
+    auto time = std::chrono::system_clock::now();
+    auto time_t = std::chrono::system_clock::to_time_t(time);
+    stringstream ss;
+    ss << std::put_time(std::localtime(&time_t), "%Y-%m-%d %X");
+    return ss.str();
+}

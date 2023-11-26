@@ -8,6 +8,7 @@ unsigned long long int rightRotate (unsigned long long int n, unsigned long long
 unsigned long long int hashing(const string& input);
 void fillBits(std::bitset<256> &bits, unsigned long long int seed);
 string getHashString(const string& input);
+string getCurrentTime();
 
 
 

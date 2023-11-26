@@ -2,31 +2,19 @@
 #define RANDOMIZER_H
 
 #include "mylib.h"
+#include "functions.h"
+#include "user.h"
+#include "transactions.h"
 
-// Class Random contains static methods for generating random values of various types.
 
-class Random {
+class DataGenerator {
     private:
         static thread_local std::mt19937 generator;
 
     public:
-        // Initialize the random number generator with a random seed based on std::random_device.
-
         static void init() {
             std::random_device rd;
             generator.seed(rd());
-        }
-        static string randomString(size_t length) {
-            const string str("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz");
-            std::uniform_int_distribution<> dist(0, str.size() - 1);
-            string random_string;
-            random_string.reserve(length);
-
-            for (size_t i = 0; i < length; ++i) {
-                random_string += str[dist(generator)];
-            }
-
-            return random_string;
         }
 
         static double randomDouble(double min, double max) {
@@ -43,13 +31,66 @@ class Random {
             std::uniform_int_distribution<unsigned int> dist(min, max);
             return dist(generator);
         }
+
+        vector<User> generateUsers(int n) {
+
+            vector<User> users;
+
+            for (int i = 0; i < n; i++) {
+
+                string name = "user" + to_string(i);
+                string publicKey = getHashString(name);
+                                
+                User user(name, publicKey);
+                users.push_back(user);
+
+                int numberfInitialUTXOs = randomInt(1, 10);
+                for (int j = 0; j < numberfInitialUTXOs; j++) {
+                    double amount = randomDouble(100, 100000);
+                    UTXO utxo = {amount, publicKey};
+                    users[i].addUTXO(utxo);
+                }
+            }
+            return users;
+        }
+
+        vector<Transaction> createTransactions (const vector<User>& users, int n) {
+            vector<Transaction> transactions;
+            std::ofstream outFile("transactions.txt");
+
+            if (!outFile.is_open()) {
+                std::cout << "Unable to open file";
+                exit(1);
+            }
+
+            for (int i = 0; i < n; i++) {
+                string recipientPublicKey = getRandomPublicKey(users);
+                string senderPublicKey;
+                do {
+                    senderPublicKey = getRandomPublicKey(users);
+                } while (senderPublicKey == recipientPublicKey);
+
+                double amount = randomDouble(100, 100000);
+                
+                Transaction transaction(senderPublicKey, recipientPublicKey, amount);
+                transactions.push_back(transaction);
+
+                if (outFile.is_open()) {
+                    transaction.print(outFile);
+                    outFile << endl;
+                }
+            }
+
+            outFile.close();
+            return transactions;
+        }
+
+        string getRandomPublicKey(const vector<User>& users) {
+            int index = randomInt(0, users.size() - 1);
+            return users[index].GetpKey();
+        }
 };
 
-// Initialize the static thread-local generator with a non-deterministic seed.
-
-thread_local std::mt19937 Random::generator(std::random_device{}());
-
-
+thread_local std::mt19937 DataGenerator::generator(std::random_device{}());
 
 #endif
-
